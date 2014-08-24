@@ -1,3 +1,4 @@
+import copy
 from django.contrib.auth.models import User
 import inspect
 from datetime import date, timedelta, datetime
@@ -127,7 +128,8 @@ class BaseCohort:
     def date_set(self):
         # FIXME make sure that the last week doesn't get cut off
         revised_date_range_set = self.date_range_set
-        for i in revised_date_range_set:
+        revised_date_range_list = copy.deepcopy(revised_date_range_set)
+        for i in revised_date_range_list:
             if i[0] <= self.start_date:
                 revised_date_range_set.remove(i)
         return revised_date_range_set
