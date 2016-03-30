@@ -153,7 +153,7 @@ class BaseCohort:
         revised_date_range_set = self.date_range_set
         revised_date_range_list = copy.deepcopy(revised_date_range_set)
         for i in revised_date_range_list:
-            if i[0] <= self.start_date:
+            if i[0] < self.start_date:
                 revised_date_range_set.remove(i)
         return revised_date_range_set
 
