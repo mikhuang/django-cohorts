@@ -8,6 +8,7 @@ else:
 import inspect
 from datetime import date, timedelta, datetime
 from django.utils.module_loading import import_string
+import arrow
 from . import conf
 
 
@@ -37,7 +38,7 @@ class CohortAnalysis:
     def date_range(start_date=None, end_date=None):
         if start_date and end_date == None:
             end_date = date.today() + timedelta(days=1)
-            start_date = end_date - timedelta(days=60)
+            start_date = end_date - timedelta(days=conf.COHORT_RANGE)
         date_range = {
             "start":start_date,
             "end": end_date
@@ -57,19 +58,15 @@ class CohortAnalysis:
         # add the list to the date_range_set
         date_start = self.date_range()['start']
         date_end = self.date_range()['end']
-        weeks = []
-        while date_start <= date_end:
-            week = date_start + timedelta(days=7)
-            weeks.append(week)
-            date_start = date_start + timedelta(days=7)
+
         date_list = []
-        for week in weeks:
-            # Get the start and end of each week in the date_range
-            week_dates = get_week_dates(week)
-            # Get the date objects for each week and add it to date_list
-            r = (week_dates['end']+timedelta(days=0)-week_dates['start']).days
-            dates = [week_dates['start']+timedelta(days=i) for i in range(r)]
-            date_list.append(dates)
+        actual_start = arrow.get(date_start).floor('week')
+        actual_end = arrow.get(date_end).ceil('week')
+        iter_date = actual_start
+        while iter_date < actual_end:
+            week_ceil = arrow.get(iter_date).ceil('week')
+            date_list.append([iter_date.datetime, week_ceil.datetime])
+            iter_date = arrow.get(iter_date).replace(weeks=+1)
         return date_list
 
 
@@ -95,7 +92,8 @@ class CohortAnalysis:
             cohort = {}
             cohort_users = []
             for user in user_list:
-                if getattr(user, conf.COHORT_DATE_JOINED_FIELD).date() in i:
+                date_joined = getattr(user, conf.COHORT_DATE_JOINED_FIELD)
+                if date_joined >= i[0] and date_joined <= i[1]:
                     cohort_users.append(user)
             cohort['start_date'] = i[0]
             cohort['users'] = cohort_users
