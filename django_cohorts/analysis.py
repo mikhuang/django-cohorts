@@ -85,6 +85,11 @@ class CohortAnalysis:
         user_filter[range_field] = (self.date_range()['start'], self.date_range()['end'])
 
         user_list = User.objects.filter(**user_filter)
+
+        if conf.COHORT_USER_FILTER:
+            method = import_string(conf.COHORT_USER_FILTER)
+            if method:
+                user_list = method(user_list)
         cohorts = []
         for i in self.date_range_set:
             cohort = {}

@@ -1,10 +1,12 @@
 {% extends "admin/base_site.html" %}
-{% load args %}
+{% load args static %}
 
-{% block breadcrumbs %}<div class="breadcrumbs"><a href="/admin">Home</a> &rsaquo; Cohort Analysis</div>{% endblock %}
+{% block title %}Cohort Analysis | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="/admin/">Home</a> &rsaquo; Cohort Analysis</div>{% endblock %}
 {% block content %}
 
-<p>
+<p class="paginator">
 {% for method, method_name in analysis.get_metrics_choices %}
 <a href="?metric={{method_name}}">{{method_name}}</a>
 {% endfor %}
@@ -37,4 +39,9 @@
     {% endfor %}
     </tbody>
 </table>
+{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static "admin/css/changelists.css" %}" />
 {% endblock %}
