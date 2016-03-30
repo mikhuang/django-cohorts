@@ -1,6 +1,16 @@
 {% extends "admin/base_site.html" %}
+{% load args %}
+
 {% block breadcrumbs %}<div class="breadcrumbs"><a href="/admin">Home</a> &rsaquo; Cohort Analysis</div>{% endblock %}
 {% block content %}
+
+<p>
+{% for method, method_name in analysis.get_metrics_choices %}
+<a href="?metric={{method_name}}">{{method_name}}</a>
+{% endfor %}
+</p>
+
+<h1>{% firstof metric_choice cohorts.0.analyze.metric_choice %}</h1>
 <table>
     <thead>
         <tr>
@@ -13,15 +23,17 @@
     </thead>
     <tbody>
     {% for cohort in cohorts %}
+        {% with analyze=cohort|args:metric_choice|call:"analyze" %}
         <tr class="{% cycle "row1" "row2" %}">
             <th scope="row">
                 <b>{{ cohort.name|date }}</b>
             </th>
-            <th>{{ cohort.analyze.count }}</th>
-            {% for data in cohort.analyze.analysis %}
+            <th>{{ analyze.count }}</th>
+            {% for data in analyze.analysis %}
             <td>{{ data|floatformat }}%</td>
             {% endfor %}
         </tr>
+        {% endwith %}
     {% endfor %}
     </tbody>
 </table>

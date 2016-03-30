@@ -1,5 +1,3 @@
-import inspect
-
 class CohortAnalysisMetrics:
     '''Create your analysis metrics here. Must return a list of floats.'''
     def logins(self, cohort, date_range_set):
@@ -8,7 +6,7 @@ class CohortAnalysisMetrics:
         analysis = []
         for i in date_range_set:
             count = 0
-            try:   
+            try:
                 for user in cohort:
                     if user.last_login.date() in i:
                         count += 1

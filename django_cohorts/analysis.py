@@ -1,14 +1,21 @@
 import copy
-from django.contrib.auth.models import User
+try:
+    from django.contrib.auth import get_user_model
+except ImportError: # django < 1.5
+    from django.contrib.auth.models import User
+else:
+    User = get_user_model()
 import inspect
 from datetime import date, timedelta, datetime
-from django_cohorts.metrics import CohortAnalysisMetrics
+from django.utils.module_loading import import_string
+from . import conf
+
 
 def get_week_dates(target_date):
     '''Get the start date of the week and the end date
-    based on the target_date argument. 
+    based on the target_date argument.
     Returns a dictionary of date objects "start" and "end"
-    
+
     modified from: http://code.activestate.com/recipes/521915-start-date-and-end-date-of-given-week/
     '''
     # TODO modify this to get the week start and end dates for all the weeks inbetween 2 dates
@@ -23,9 +30,10 @@ def get_week_dates(target_date):
         d = d - timedelta(d.weekday())
     dlt = timedelta(days = (week-1)*7)
     # Return the tuple of dates formatted for use with Goal.data
-    return {"start":d + dlt, "end": d + dlt + timedelta(days=6)} 
+    return {"start":d + dlt, "end": d + dlt + timedelta(days=6)}
 
-class CohortAnalysis:    
+
+class CohortAnalysis:
     def date_range(start_date=None, end_date=None):
         if start_date and end_date == None:
             end_date = date.today() + timedelta(days=1)
@@ -36,9 +44,11 @@ class CohortAnalysis:
         }
         return date_range
 
+
     def resolution(resolution="week"):
         return resolution
-    
+
+
     @property
     def date_range_set(self):
         '''Make a list of dates based on the resolution'''
@@ -62,41 +72,47 @@ class CohortAnalysis:
             date_list.append(dates)
         return date_list
 
+
     def get_cohorts(self):
         '''Gets a list of querysets, "cohorts", of users.
         Subclass CohortAnalysis and overwrite get_cohorts to define your own.
         Must return a list of BaseCohort objects.
 
         Defaults to user signup week unless analysis_resolution is "month"'''
-        
-        user_list = User.objects.filter(
-            date_joined__range = (self.date_range()['start'], self.date_range()['end'])
-        )
+
+        range_field = '%s__range' % (conf.COHORT_DATE_JOINED_FIELD)
+        user_filter = {}
+        user_filter[range_field] = (self.date_range()['start'], self.date_range()['end'])
+
+        user_list = User.objects.filter(**user_filter)
         cohorts = []
         for i in self.date_range_set:
             cohort = {}
-            cohort_users = [] 
+            cohort_users = []
             for user in user_list:
-                if user.date_joined.date() in i:
+                if getattr(user, conf.COHORT_DATE_JOINED_FIELD).date() in i:
                     cohort_users.append(user)
             cohort['start_date'] = i[0]
             cohort['users'] = cohort_users
             cohorts.append(cohort)
-        cohorts = [BaseCohort(i, self.date_range_set) for i in cohorts]
-        return cohorts
-    
+        return [BaseCohort(i, self.date_range_set) for i in cohorts]
+
+
     def methods(self, c):
         '''Gets all the methods from a given class'''
         return (m for m in (getattr(c, d) for d in dir(c))
                 if inspect.ismethoddescriptor(m) or inspect.ismethod(m))
-    
+
+
     @property
     def get_metrics(self):
         '''Gets a list of metrics functions to perform on the cohorts'''
         # TODO turn this into a list instead of a generator
-        c = CohortAnalysisMetrics()
+        klass = import_string(conf.COHORT_ANALYSIS_METRICS)
+        c = klass()
         metrics = self.methods(c)
         return metrics
+
 
     @property
     def get_metrics_choices(self):
@@ -104,16 +120,19 @@ class CohortAnalysis:
         used for the analysis page to select different metrics.
         Choices are named after the function name.
         '''
-        choices = ()
+        choices = []
         for i in self.get_metrics:
-            choice.append((i, i.func_name))
+            choices.append((i, i.__name__))
         return choices
 
+
     def get_metrics_function_by_choice(self, choice):
-        for i in get_metrics_choices:
+        for i in self.get_metrics_choices:
+            metric_function = i[0]
             if i[1] == choice:
-                metric_function = get_metrics[i][0]
+                return i[0]
         return metric_function
+
 
 class BaseCohort:
     '''Subclass this to define a different metric'''
@@ -123,7 +142,8 @@ class BaseCohort:
         self.cohort = cohort['users']
         self.date_range_set = date_range_set
         self.start_date = cohort['start_date']
-    
+
+
     @property
     def date_set(self):
         # FIXME make sure that the last week doesn't get cut off
@@ -133,15 +153,18 @@ class BaseCohort:
             if i[0] <= self.start_date:
                 revised_date_range_set.remove(i)
         return revised_date_range_set
-            
+
+
     def analyze(self, metric_choice=None):
         ''' Analyzes the cohorts based on the metric function defined.'''
         if metric_choice == None:
-            metric = CohortAnalysis().get_metrics.next()
+            metric = next(CohortAnalysis().get_metrics)
+            metric_choice = metric.__name__
         else:
             metric = CohortAnalysis().get_metrics_function_by_choice(metric_choice)
         cohort_analysis = metric(self.cohort, self.date_set)
         analysis = {
+            "metric_choice": metric_choice,
             "count": len(self.cohort),
             "analysis": cohort_analysis,
         }
