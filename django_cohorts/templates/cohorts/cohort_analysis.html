@@ -7,16 +7,22 @@
 {% block content %}
 
 <form>
-<select name="resolution">
-<option value="day" {% if analysis.resolution == 'day'%}selected{% endif %}>Day</option>
-<option value="week" {% if analysis.resolution == 'week'%}selected{% endif %}>Week</option>
-<option value="month" {% if analysis.resolution == 'month'%}selected{% endif %}>Month</option>
-</select>
+<p>
+    Resolution
+    <select name="resolution">
+    <option value="day" {% if analysis.resolution == 'day'%}selected{% endif %}>Day</option>
+    <option value="week" {% if analysis.resolution == 'week'%}selected{% endif %}>Week</option>
+    <option value="month" {% if analysis.resolution == 'month'%}selected{% endif %}>Month</option>
+    </select>
+</p>
+<p class="datetime">End Date: <input class="vDateField" id="end_date" name="end_date" size="10" type="text" value="{{analysis.end_date|date:'Y-m-d'}}" />
+</p>
 <p>
 {% for method, method_name in analysis.get_metrics_choices %}
-<input type="submit" value="{{method_name}}" name="metric" />
+<label style="margin-right: 1em"><input type="radio" value="{{method_name}}" name="metric" {% if metric_choice == method_name %}checked{% endif %} /> {{method_name}} </label>
 {% endfor %}
 </p>
+<input type="submit" value="Refresh" />
 </form>
 
 
@@ -53,13 +59,18 @@
 {% block extrastyle %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="{% static "admin/css/changelists.css" %}" />
+<link rel="stylesheet" type="text/css" href="{% static "admin/css/forms.css" %}" />
 {% endblock %}
 
 
 {% block extrahead %}
 {{ block.super }}
+<script type="text/javascript" src="{% url 'admin:jsi18n' %}"></script>
+<script type="text/javascript" src="{% static "admin/js/core.js" %}"></script>
 <script type="text/javascript" src="{% static "admin/js/vendor/jquery/jquery.js" %}"></script>
 <script type="text/javascript" src="{% static "admin/js/jquery.init.js" %}"></script>
+<script type="text/javascript" src="{% static "admin/js/calendar.js" %}"></script>
+<script type="text/javascript" src="{% static "admin/js/admin/DateTimeShortcuts.js" %}"></script>
 <script type="text/javascript">
     // http://stackoverflow.com/questions/14819058/mixing-two-colors-naturally-in-javascript
     //colorChannelA and colorChannelB are ints ranging from 0 to 255

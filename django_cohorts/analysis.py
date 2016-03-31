@@ -11,31 +11,27 @@ from django.utils.module_loading import import_string
 import arrow
 from . import conf
 
+RESOLUTION_CHOICES = ['week', 'month', 'day']
 
 class CohortAnalysis:
     # Initialize this class with a cohort queryset
-    def __init__(self, resolution="week"):
-        if not resolution in ['week', 'month', 'day']:
-            resolution = 'week'
+    def __init__(self, resolution=None, end_date=None):
+        if not resolution in RESOLUTION_CHOICES:
+            resolution = RESOLUTION_CHOICES[0]
         self.resolution = resolution
+        self.start_date = None
+        self.end_date = arrow.get(end_date).datetime
+        self.date_range() # init date range
 
 
-    def date_range(self, start_date=None, end_date=None):
-        if start_date == None and end_date == None:
+    def date_range(self):
+        if not self.end_date:
             end_date = arrow.now().replace(days=+1)
+            self.end_date = end_date.floor('day').datetime
+        if not self.start_date:
             replacement = {}
             replacement["%ss" % self.resolution] = -conf.COHORT_RANGE
-            start_date = arrow.get(end_date).replace(**replacement).floor('day').datetime
-            end_date = end_date.floor('day').datetime
-        date_range = {
-            "start":start_date,
-            "end": end_date,
-        }
-        return date_range
-
-
-    # def resolution(resolution="week"):
-    #     return resolution
+            self.start_date = arrow.get(self.end_date).replace(**replacement).floor('day').datetime
 
 
     @property
@@ -44,12 +40,10 @@ class CohortAnalysis:
         # Take the date_range and chop it up into weeks
         # get a list of dates in the week
         # add the list to the date_range_set
-        date_start = self.date_range()['start']
-        date_end = self.date_range()['end']
 
         date_list = []
-        actual_start = arrow.get(date_start).floor(self.resolution)
-        actual_end = arrow.get(date_end).ceil(self.resolution)
+        actual_start = arrow.get(self.start_date).floor(self.resolution)
+        actual_end = arrow.get(self.end_date).ceil(self.resolution)
         iter_date = actual_start
         while iter_date < actual_end:
             period_ceil = arrow.get(iter_date).ceil(self.resolution)
@@ -69,7 +63,7 @@ class CohortAnalysis:
 
         range_field = '%s__range' % (conf.COHORT_DATE_JOINED_FIELD)
         user_filter = {}
-        user_filter[range_field] = (self.date_range()['start'], self.date_range()['end'])
+        user_filter[range_field] = (self.start_date, self.end_date)
 
         user_list = User.objects.filter(**user_filter)
 

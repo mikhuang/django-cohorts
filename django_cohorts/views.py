@@ -8,8 +8,10 @@ def cohort_analysis(request):
     #     if form.is_valid():
     #         pass# Do something to change the analysis shown
     resolution = request.GET.get('resolution')
-    analysis = CohortAnalysis(resolution)
+    end_date = request.GET.get('end_date')
+    analysis = CohortAnalysis(resolution, end_date)
     cohorts = analysis.get_cohorts()
+
     context = {
         "resolution": resolution,
         "metric_choice": request.GET.get('metric'),
