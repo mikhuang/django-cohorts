@@ -6,20 +6,28 @@
 {% block breadcrumbs %}<div class="breadcrumbs"><a href="/admin/">Home</a> &rsaquo; Cohort Analysis</div>{% endblock %}
 {% block content %}
 
-<p class="paginator">
+<form>
+<select name="resolution">
+<option value="day" {% if analysis.resolution == 'day'%}selected{% endif %}>Day</option>
+<option value="week" {% if analysis.resolution == 'week'%}selected{% endif %}>Week</option>
+<option value="month" {% if analysis.resolution == 'month'%}selected{% endif %}>Month</option>
+</select>
+<p>
 {% for method, method_name in analysis.get_metrics_choices %}
-<a href="?metric={{method_name}}">{{method_name}}</a>
+<input type="submit" value="{{method_name}}" name="metric" />
 {% endfor %}
 </p>
+</form>
 
-<h1>{% firstof metric_choice cohorts.0.analyze.metric_choice %}</h1>
+
+<h1>{{metric_choice}}</h1>
 <table>
     <thead>
         <tr>
             <th>Cohort</th>
             <th>Count</th>
             {% for set in analysis.date_range_set %}
-            <th>Week {{ forloop.counter }}</th>
+            <th>{{analysis.resolution}} {{ forloop.counter }}</th>
             {% endfor %}
         </tr>
     </thead>

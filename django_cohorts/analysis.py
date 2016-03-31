@@ -12,42 +12,30 @@ import arrow
 from . import conf
 
 
-def get_week_dates(target_date):
-    '''Get the start date of the week and the end date
-    based on the target_date argument.
-    Returns a dictionary of date objects "start" and "end"
-
-    modified from: http://code.activestate.com/recipes/521915-start-date-and-end-date-of-given-week/
-    '''
-    # TODO modify this to get the week start and end dates for all the weeks inbetween 2 dates
-    # get the week number for the date
-    calendar = target_date.isocalendar()
-    week = calendar[1]
-    year = calendar[0]
-    d = date(year,1,1)
-    if(d.weekday()>3):
-        d = d+timedelta(7-d.weekday())
-    else:
-        d = d - timedelta(d.weekday())
-    dlt = timedelta(days = (week-1)*7)
-    # Return the tuple of dates formatted for use with Goal.data
-    return {"start":d + dlt, "end": d + dlt + timedelta(days=6)}
-
-
 class CohortAnalysis:
-    def date_range(start_date=None, end_date=None):
-        if start_date and end_date == None:
-            end_date = date.today() + timedelta(days=1)
-            start_date = end_date - timedelta(days=conf.COHORT_RANGE)
+    # Initialize this class with a cohort queryset
+    def __init__(self, resolution="week"):
+        if not resolution in ['week', 'month', 'day']:
+            resolution = 'week'
+        self.resolution = resolution
+
+
+    def date_range(self, start_date=None, end_date=None):
+        if start_date == None and end_date == None:
+            end_date = arrow.now().replace(days=+1)
+            replacement = {}
+            replacement["%ss" % self.resolution] = -conf.COHORT_RANGE
+            start_date = arrow.get(end_date).replace(**replacement).floor('day').datetime
+            end_date = end_date.floor('day').datetime
         date_range = {
             "start":start_date,
-            "end": end_date
+            "end": end_date,
         }
         return date_range
 
 
-    def resolution(resolution="week"):
-        return resolution
+    # def resolution(resolution="week"):
+    #     return resolution
 
 
     @property
@@ -60,13 +48,15 @@ class CohortAnalysis:
         date_end = self.date_range()['end']
 
         date_list = []
-        actual_start = arrow.get(date_start).floor('week')
-        actual_end = arrow.get(date_end).ceil('week')
+        actual_start = arrow.get(date_start).floor(self.resolution)
+        actual_end = arrow.get(date_end).ceil(self.resolution)
         iter_date = actual_start
         while iter_date < actual_end:
-            week_ceil = arrow.get(iter_date).ceil('week')
-            date_list.append([iter_date.datetime, week_ceil.datetime])
-            iter_date = arrow.get(iter_date).replace(weeks=+1)
+            period_ceil = arrow.get(iter_date).ceil(self.resolution)
+            date_list.append([iter_date.datetime, period_ceil.datetime])
+            replacement = {}
+            replacement["%ss" % self.resolution] = +1
+            iter_date = arrow.get(iter_date).replace(**replacement)
         return date_list
 
 
